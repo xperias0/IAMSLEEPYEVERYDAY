@@ -26,6 +26,6 @@ public class SkyBoxRotation : MonoBehaviour
         }
         
         mat.SetFloat("_Rotation",angle);
-        print(angle);
+        
     }
 }

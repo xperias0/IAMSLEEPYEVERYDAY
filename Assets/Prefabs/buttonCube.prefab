@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 7267172877933517010}
   - component: {fileID: 4255871779131069016}
   - component: {fileID: 1270536310739796709}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: button
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -130,6 +130,11 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 2322578013201211222, guid: 9eaafeb10a9a70e4899007bdf8e62128,
+        type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
     - target: {fileID: 6268288480077331765, guid: 9eaafeb10a9a70e4899007bdf8e62128,
         type: 3}
       propertyPath: m_LocalPosition.x
@@ -183,7 +188,12 @@ PrefabInstance:
     - target: {fileID: 6752795273369413519, guid: 9eaafeb10a9a70e4899007bdf8e62128,
         type: 3}
       propertyPath: m_Name
-      value: cubeRounded (6) Variant
+      value: buttonCube
+      objectReference: {fileID: 0}
+    - target: {fileID: 6752795273369413519, guid: 9eaafeb10a9a70e4899007bdf8e62128,
+        type: 3}
+      propertyPath: m_Layer
+      value: 6
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

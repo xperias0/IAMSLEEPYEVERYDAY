@@ -9,20 +9,40 @@ using UnityEngine.Rendering.HighDefinition;
 public class MainController : MonoBehaviour
 {
     // Start is called before the first frame update
+    public enum Status
+    {
+        Normal,
+        Climb,
+        Destroy
+    }
+    
+    public enum RotDirection
+    {
+        Forward,
+        Backward,
+        Left,
+        Right
+    }
+
+        public Status currentStatus;
+        private RotDirection currentRotDirection;
         public Transform forward;
         public Transform backward;
         public Transform left;
         public Transform right;
         public GameObject sleepParticles;
+
+        private Rigidbody rigidbody;
         private GameObject curSleepParticel;
+        private GameObject testBall;
         private ParticleSystem parti;
         private Transform[] VertPositions;
         private Transform[] HoriPositons;
         private Queue<Transform> HoriPosQueue;
         private Queue<Transform> VertPosQueue;
+        
         private float sleepedTime = 0;
         public float sleepTimePeriod;
-        
         public float rotSpeed;
         public float targetAngle;
         private float stepLength;
@@ -35,6 +55,7 @@ public class MainController : MonoBehaviour
 
         private bool isGen = false;
         private bool isOnDecalCube = false;
+        private bool isOnWall = false;
         
         private bool startForwardRot  = false;
         private bool startBackwardRot = false;
@@ -57,7 +78,6 @@ public class MainController : MonoBehaviour
             if (!isSleeping)
             {
                 sleepedTime += Time.deltaTime;
-                print("sleeptime: "+sleepedTime);
             }
 
             if (sleepedTime >= sleepTimePeriod && sleepedTime <sleepTimePeriod+0.1f)
@@ -83,13 +103,16 @@ public class MainController : MonoBehaviour
             HoriPositons[0] = HoriPosQueue.Peek();
             HoriPosQueue.Enqueue(HoriPositons[1]);
             
-            print("hori Switched");
+           // print("hori Switched");
             //checkPositions();
             return new WaitForSecondsRealtime(0.5f);
         }
         private void initialize()
         {
             awakeParicle();
+            rigidbody = GetComponent<Rigidbody>();
+            testBall = GameObject.Find("TESTBALL"); 
+            currentStatus = Status.Climb;
             VertPositions = new Transform[2];
             HoriPositons  = new Transform[2];
             HoriPosQueue  = new Queue<Transform>();
@@ -140,11 +163,12 @@ public class MainController : MonoBehaviour
             {
                 startLeftRot  = false;
                 startRightRot = false;
+                isFinishedRot = true;
                 vertDir = vertDir == false ? true : false;
                 print("vertDir: "+vertDir);
                 vericalAngle = 0;
                 StartCoroutine(changeVericalPosition());
-                
+                if(!isOnWall) resetRigidbody();
                 
             }
 
@@ -152,18 +176,20 @@ public class MainController : MonoBehaviour
             {
                 startForwardRot  = false;
                 startBackwardRot = false;
+                isFinishedRot = true;
                 horiDir = horiDir == false ? true : false;
-                print("horiDIr: "+horiDir);
+//                print("horiDIr: "+horiDir);
                 horizontalAngle  = 0;
                 StartCoroutine(changeHorizontalPosition());
+                if(!isOnWall) resetRigidbody();
                 
             }
 
 
-            if (Input.GetKeyDown(KeyCode.W))  {startForwardRot  = true; destroyParticle();}
-            if (Input.GetKeyDown(KeyCode.S))  {startBackwardRot = true; destroyParticle();}
-            if (Input.GetKeyDown(KeyCode.A))  {startLeftRot     = true; destroyParticle();}
-            if (Input.GetKeyDown(KeyCode.D))  {startRightRot    = true; destroyParticle();}
+            if (Input.GetKeyDown(KeyCode.W))  {startForwardRot  = true; OnstartRotation(); currentRotDirection = RotDirection.Forward;}
+            if (Input.GetKeyDown(KeyCode.S))  {startBackwardRot = true; OnstartRotation(); currentRotDirection = RotDirection.Backward;}
+            if (Input.GetKeyDown(KeyCode.A))  {startLeftRot     = true; OnstartRotation(); currentRotDirection = RotDirection.Left;}
+            if (Input.GetKeyDown(KeyCode.D))  {startRightRot    = true; OnstartRotation(); currentRotDirection = RotDirection.Right;}
         }
 
         private void checkPositions()
@@ -187,9 +213,95 @@ public class MainController : MonoBehaviour
             }
         }
 
-
-        void destroyParticle()
+        void detectCube()
         {
+
+            if (currentStatus == Status.Climb)
+            {
+                Vector3 targetRotDirection = Vector3.zero;
+                Vector3 localTargetRotDirection = Vector3.zero;
+                Vector3 startPosition = transform.position + (Vector3.up * 1.3f);
+                Vector3 testPos = Vector3.zero;
+                float dis = 1.5f;
+                float wallAngle = 88f;
+                switch (currentRotDirection)
+                {
+                    case RotDirection.Forward:
+                        targetRotDirection      = ((startPosition + Vector3.forward * dis) - startPosition).normalized;
+                        localTargetRotDirection = ((startPosition + transform.forward * dis) - startPosition).normalized;
+                       
+                        break;
+                    case RotDirection.Backward:
+                            targetRotDirection      = ((startPosition + (-Vector3.forward * dis)) - startPosition).normalized;
+                            localTargetRotDirection = ((startPosition + (-transform.forward * dis)) - startPosition).normalized;
+                        
+                        break;
+                    case RotDirection.Left:
+                        targetRotDirection = ((startPosition + ((-Vector3.right) * dis)) - startPosition).normalized;
+                        break;
+                    case RotDirection.Right:
+                        targetRotDirection = ((startPosition + (Vector3.right) * dis) - startPosition).normalized;
+                        break;
+                    
+                }
+
+                
+                bool isLocalHit = false;
+                testBall.transform.position = startPosition;
+                
+                Ray ray;
+                ray = new Ray(startPosition, targetRotDirection);
+                Ray localRay;
+                localRay = new Ray(startPosition, localTargetRotDirection);
+                RaycastHit hit;
+                RaycastHit localHit;
+                
+                if (Physics.Raycast(localRay,out localHit,2.2f, 1 << 6))
+                {
+                    isLocalHit = true;
+                }
+                startPosition = !isLocalHit ? startPosition + (-targetRotDirection * 0.2f) : startPosition;
+                if (Physics.Raycast(ray, out hit, 1.5f, 1 << 6))
+                {
+                    rigidbody.useGravity  = false;
+                    rigidbody.isKinematic = true;
+                    if (isOnWall && isLocalHit )
+                    {
+                        targetAngle = wallAngle - 5f;
+                        if(isOnWall) isOnWall = false;
+                        print("localHit");
+                    }
+                    else
+                    {
+                        targetAngle = isOnWall ? 180f: wallAngle -1f;
+                        isOnWall = true;
+                    }
+                    
+                    print("Cube Detected");
+                }
+                else
+                {
+                    targetAngle = isOnWall ? 260f  : 170f;
+                    if (isOnWall) isOnWall = false;
+                    print("Cube Detected False, isONWALL:" +isOnWall);
+                }
+
+                Debug.DrawLine(startPosition, startPosition + targetRotDirection*2f, Color.red, 2f);
+            }
+        }
+
+
+        void resetRigidbody()
+        {
+            
+            rigidbody.useGravity = true;
+            rigidbody.isKinematic = false;
+        }
+
+        void OnstartRotation()
+        {
+            detectCube();
+            isFinishedRot = false;
             isSleeping = false;
             sleepedTime = 0;
             Destroy(curSleepParticel);
